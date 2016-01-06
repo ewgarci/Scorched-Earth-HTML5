@@ -45,7 +45,9 @@ var SEarth = (function() {
         angle: 60,
         width: 15,
         height: 7,
-        turretLength: 15
+        turretLength: 15,
+        spriteSize: 40,
+        killRadius: 8
     };
 
     var count = 0;
@@ -153,9 +155,9 @@ var SEarth = (function() {
               color: colors[colorIdx]
             };
 
-            newTank.topLeftXPos = newTank.xpos - tankDefaults.turretLength;
-            newTank.topLeftYPos = newTank.ypos - tankDefaults.turretLength;
-            newTank.origBg = ctx.getImageData(newTank.topLeftXPos, newTank.topLeftYPos, tankDefaults.turretLength*2, tankDefaults.turretLength*2);
+            newTank.topLeftXPos = newTank.xpos - tankDefaults.spriteSize/2;
+            newTank.topLeftYPos = newTank.ypos - tankDefaults.spriteSize/2;
+            newTank.origBg = ctx.getImageData(newTank.topLeftXPos, newTank.topLeftYPos, tankDefaults.spriteSize, tankDefaults.spriteSize);
 
             var bulletCanvas = document.createElement('canvas');
             bulletCanvas.id     = newTank.id + "-bl";
@@ -271,7 +273,7 @@ var SEarth = (function() {
         },
 
         isTankHit: function(tank, xPos, yPos) {
-          if ((xPos - tank.xpos)*(xPos - tank.xpos) + (yPos - tank.ypos)*(yPos - tank.ypos) <= tankDefaults.turretLength*tankDefaults.turretLength)
+          if ((xPos - tank.xpos)*(xPos - tank.xpos) + (yPos - tank.ypos)*(yPos - tank.ypos) <= tankDefaults.killRadius * tankDefaults.killRadius)
             return true;
           else
             return false;
@@ -291,9 +293,9 @@ var SEarth = (function() {
         },
 
         drawExplosion: function(xpos, ypos, color) {
-            var topLeftXPos = xpos - tankDefaults.turretLength;
-            var topLeftYPos = ypos - tankDefaults.turretLength;
-            var origBg = ctx.getImageData(topLeftXPos, topLeftYPos, tankDefaults.turretLength*2, tankDefaults.turretLength*2);
+            var topLeftXPos = xpos - tankDefaults.spriteSize/2;
+            var topLeftYPos = ypos - tankDefaults.spriteSize/2;
+            var origBg = ctx.getImageData(topLeftXPos, topLeftYPos, tankDefaults.spriteSize, tankDefaults.spriteSize);
 
             var explosionCount = 1;
             var explosionLength = 10;
