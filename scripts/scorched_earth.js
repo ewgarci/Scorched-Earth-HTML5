@@ -33,14 +33,13 @@ var SEarth = (function() {
     var ctx = document.getElementById('game_board').getContext('2d');
     var width = ctx.canvas.width;
     var height = ctx.canvas.height;
-    var power = 30;
-    var angle = 60;
     var gravity = 1;
     var fps = 1000 / 30; // 30fps
     var land = [];
-    var selectedTank = 0;
+    var selectedTankIdx = 0;
+    var selectedTankId = '';
     var numOfTanks = 2;
-    var tanks = [];
+    var tanks = {};
     var tankDefaults = {
         power: 30,
         angle: 60,
@@ -57,16 +56,25 @@ var SEarth = (function() {
       'rgb(255, 0, 255)'
     ];
 
+    function guid() {
+      function s4() {
+        return Math.floor((1 + Math.random()) * 0x10000)
+            .toString(16)
+            .substring(1);
+      }
+      return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+    }
+
     return {
         drawSky: function() {
-            var bands = 30;
+            var bands = 45;
 
             // Set black background
             ctx.fillStyle  = 'rgb(0, 0, 0)';
             ctx.fillRect(0, 0, width, height);
 
             // Vertical offset
-            var v_offset = 100;
+            var v_offset = 50;
 
             var shade = Math.round(255 / bands);
             var band_height = Math.round((height - v_offset) / bands);
@@ -131,30 +139,28 @@ var SEarth = (function() {
             }
         },
 
-        addTanks: function(num) {
-            // Clear current tanks
-            tanks = [];
-            for (var i=0; i<num; i += 1) {
-                // Generate random X position
-                var xpos = Math.round(Math.random() * width);
+        addTank: function() {
+            // Generate random X position
+            var xpos = Math.round(Math.random() * width);
+            var colorIdx = Math.round(Math.random() * 4);
 
-                var newTank = {
-                  id: i,
-                  xpos: xpos,
-                  ypos: land[xpos].ypos,
-                  power: tankDefaults.power,
-                  angle: tankDefaults.angle,
-                  color: colors[i]
-                };
+            var newTank = {
+              id: guid(),
+              xpos: xpos,
+              ypos: land[xpos].ypos,
+              power: tankDefaults.power,
+              angle: tankDefaults.angle,
+              color: colors[colorIdx]
+            };
 
-                newTank.topLeftXPos = newTank.xpos - tankDefaults.turretLength;
-                newTank.topLeftYPos = newTank.ypos - tankDefaults.turretLength;
-                newTank.origBg = ctx.getImageData(newTank.topLeftXPos, newTank.topLeftYPos, tankDefaults.turretLength*2, tankDefaults.turretLength*2);
+            newTank.topLeftXPos = newTank.xpos - tankDefaults.turretLength;
+            newTank.topLeftYPos = newTank.ypos - tankDefaults.turretLength;
+            newTank.origBg = ctx.getImageData(newTank.topLeftXPos, newTank.topLeftYPos, tankDefaults.turretLength*2, tankDefaults.turretLength*2);
 
-                // Store in tanks array
-                tanks.push(newTank);
-                this.drawTank(newTank);
-            }
+            tanks[newTank.id] = newTank;
+            this.drawTank(newTank);
+
+            selectedTankId = newTank.id
         },
 
         drawTank: function(tank) {
@@ -180,20 +186,21 @@ var SEarth = (function() {
             ctx.stroke();
         },
 
-        fireBullet: function(tank_index) {
-            // Set initial start position for the bullet
-            tanks[tank_index].bulletXPos = tanks[tank_index].xpos;
-            tanks[tank_index].bulletYPos = tanks[tank_index].ypos;
-
+        fireBullet: function(id) {
             // Calculate the X and Y speeds
-            var velocity = tanks[tank_index].power;
-            var angle = tanks[tank_index].angle * (Math.PI / 180); // Convert to radians;
-            tanks[tank_index].bulletXSpeed = (Math.cos(angle) * velocity);
-            tanks[tank_index].bulletYSpeed = (Math.sin(angle) * velocity);
+            var velocity = tanks[id].power;
+            var angleRadians = tanks[id].angle * (Math.PI / 180);
+
+            // Set initial start position for the bullet
+            tanks[id].bulletXPos = tanks[id].xpos + (Math.cos(angleRadians) * 1.2 * tankDefaults.turretLength);
+            tanks[id].bulletYPos = tanks[id].ypos - (Math.sin(angleRadians) * 1.2 * tankDefaults.turretLength);
+
+            tanks[id].bulletXSpeed = (Math.cos(angleRadians) * velocity);
+            tanks[id].bulletYSpeed = (Math.sin(angleRadians) * velocity);
 
             // Animate the bullet path
             var intervalBullet = setInterval( function() {
-              SEarth.drawBullet(tanks[tank_index], intervalBullet);
+              SEarth.drawBullet(tanks[id], intervalBullet);
             }, 30);
 
         },
@@ -206,7 +213,15 @@ var SEarth = (function() {
             } else if (tank.bulletYPos > land[Math.floor(tank.bulletXPos)].ypos) {
                 // BOOM! The bullet hit the ground.
                 clearInterval(intervalBullet);
+
+                tankDestroyed = this.didBulletHitTank(tank.bulletXPos, tank.bulletYPos);
+
+                if ( tankDestroyed ) {
+                  this.destroyTank(tankDestroyed);
+                }
+
                 this.drawExplosion(tank.bulletXPos, tank.bulletYPos, tank.color);
+
                 return;
             }
 
@@ -232,6 +247,32 @@ var SEarth = (function() {
             return;
         },
 
+        didBulletHitTank: function(xPos, yPos) {
+          for (var t in tanks) {
+            if (this.isTankHit(tanks[t], xPos, yPos)) {
+              return tanks[t];
+            }
+          }
+
+          return null;
+        },
+
+        isTankHit: function(tank, xPos, yPos) {
+          if ((xPos - tank.xpos)*(xPos - tank.xpos) + (yPos - tank.ypos)*(yPos - tank.ypos) <= tankDefaults.turretLength*tankDefaults.turretLength)
+            return true;
+          else
+            return false;
+        },
+
+        destroyTank: function(tank) {
+            this.drawExplosion(tank.xpos, tank.ypos, tank.color);
+
+            // Erase Tank
+            ctx.putImageData(tank.origBg, tank.topLeftXPos, tank.topLeftYPos);
+            delete tanks[tank.id];
+            this.addTank();
+        },
+
         drawExplosion: function(xpos, ypos, color) {
             var topLeftXPos = xpos - tankDefaults.turretLength;
             var topLeftYPos = ypos - tankDefaults.turretLength;
@@ -250,6 +291,7 @@ var SEarth = (function() {
                   return;
               }
 
+              ctx.beginPath();
               ctx.fillStyle = color;
               ctx.arc(xpos, ypos, explosionRadius*explosionCount, 0, 2*Math.PI, true);
               ctx.fill();
@@ -291,8 +333,8 @@ var SEarth = (function() {
             btnFireNum = document.getElementById('fire_button');
             btnSwitch = document.getElementById('switch_button');
 
-            btnPowerNum.innerHTML = power;
-            btnAngleNum.innerHTML = angle;
+            btnPowerNum.innerHTML = tankDefaults.power;
+            btnAngleNum.innerHTML = tankDefaults.angle;
 
             // Add Events
             this.addEvent(btnPowerDown, 'click', function() {SEarth.alterPower(-1)});
@@ -300,14 +342,20 @@ var SEarth = (function() {
             this.addEvent(btnAngleDown, 'click', function() {SEarth.alterAngle(+1)});
             this.addEvent(btnAngleUp, 'click', function() {SEarth.alterAngle(-1)});
             this.addEvent(btnFireNum, 'click', function() {
-              SEarth.fireBullet(selectedTank);
+              SEarth.fireBullet(selectedTankId);
             });
 
             this.addEvent(btnSwitch, 'click', function() {
-              selectedTank += 1;
+              selectedTankIdx += 1;
+              var tankArray = Object.keys(tanks);
 
-              if (selectedTank >= numOfTanks)
-                selectedTank = 0;
+              if (selectedTankIdx >= tankArray.length)
+                selectedTankIdx = 0;
+
+              selectedTankId = tankArray[selectedTankIdx];
+
+              btnPowerNum.innerHTML = tanks[selectedTankId].power;
+              btnAngleNum.innerHTML = tanks[selectedTankId].angle;
             });
 
             // Add keyboard listener.
@@ -319,7 +367,7 @@ var SEarth = (function() {
 
               // Space Bar
               case 32:
-                SEarth.fireBullet(selectedTank);
+                SEarth.fireBullet(selectedTankId);
                 break;
 
               // Left arrow
@@ -349,7 +397,7 @@ var SEarth = (function() {
         },
 
         alterPower: function(value) {
-            var tank = tanks[selectedTank];
+            var tank = tanks[selectedTankId];
 
             // Prevent power going below 0
             if ((tank.power + value < 0) || (tank.power + value >= 100)) {
@@ -365,7 +413,7 @@ var SEarth = (function() {
         },
 
         alterAngle: function(value) {
-            var tank = tanks[selectedTank];
+            var tank = tanks[selectedTankId];
 
             // Prevent angle going below 0
             if ((tank.angle + value < 0) || (tank.angle + value >= 180)) {
@@ -385,7 +433,8 @@ var SEarth = (function() {
         init: function() {
             this.drawSky();
             this.drawLand();
-            this.addTanks(numOfTanks);
+            this.addTank();
+            this.addTank();
             this.addControls();
             //this.outputFPS(23);
             //this.animate();
