@@ -52,6 +52,17 @@ BODY {
     padding: 20px;
 }
 
+#canvas-container {
+  position: relative;
+  height: 480px;
+}
+
+#canvas-container > canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 /*	Header
 ----------------------------------------------------------------------*/
 H1#title {
@@ -73,7 +84,7 @@ H2#sub_title {
 /*	Canvas
 ----------------------------------------------------------------------*/
 #game_board {
-    margin-bottom: 1em;
+    z-index: 0;
 }
 
 /*	Controls

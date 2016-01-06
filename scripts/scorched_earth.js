@@ -157,6 +157,14 @@ var SEarth = (function() {
             newTank.topLeftYPos = newTank.ypos - tankDefaults.turretLength;
             newTank.origBg = ctx.getImageData(newTank.topLeftXPos, newTank.topLeftYPos, tankDefaults.turretLength*2, tankDefaults.turretLength*2);
 
+            var bulletCanvas = document.createElement('canvas');
+            bulletCanvas.id     = newTank.id + "-bl";
+            bulletCanvas.width  = width;
+            bulletCanvas.height = height;
+            bulletCanvas.style.zIndex   = 5;
+            document.getElementById('canvas-container').appendChild(bulletCanvas);
+            newTank.bulletCanvas = bulletCanvas;
+
             tanks[newTank.id] = newTank;
             this.drawTank(newTank);
 
@@ -180,6 +188,7 @@ var SEarth = (function() {
             var angleRadians = tank.angle * (Math.PI / 180);
             var turretXEnd = tank.xpos + (Math.cos(angleRadians) * tankDefaults.turretLength);
             var turretYEnd = tank.ypos - (Math.sin(angleRadians) * tankDefaults.turretLength);
+
             // Draw line to the new coordinates
             ctx.lineTo(turretXEnd, turretYEnd);
             ctx.closePath();
@@ -192,20 +201,23 @@ var SEarth = (function() {
             var angleRadians = tanks[id].angle * (Math.PI / 180);
 
             // Set initial start position for the bullet
-            tanks[id].bulletXPos = tanks[id].xpos + (Math.cos(angleRadians) * 1.2 * tankDefaults.turretLength);
-            tanks[id].bulletYPos = tanks[id].ypos - (Math.sin(angleRadians) * 1.2 * tankDefaults.turretLength);
+            tanks[id].bulletXPos = tanks[id].xpos + (Math.cos(angleRadians) * 1.3 * tankDefaults.turretLength);
+            tanks[id].bulletYPos = tanks[id].ypos - (Math.sin(angleRadians) * 1.3 * tankDefaults.turretLength);
 
             tanks[id].bulletXSpeed = (Math.cos(angleRadians) * velocity);
             tanks[id].bulletYSpeed = (Math.sin(angleRadians) * velocity);
 
+            var bulletCtx = tanks[id].bulletCanvas.getContext('2d');
+            bulletCtx.clearRect(0, 0, width, height);
+
             // Animate the bullet path
             var intervalBullet = setInterval( function() {
-              SEarth.drawBullet(tanks[id], intervalBullet);
+              SEarth.drawBullet(tanks[id], intervalBullet, bulletCtx);
             }, 30);
 
         },
 
-        drawBullet: function(tank, intervalBullet) {
+        drawBullet: function(tank, intervalBullet, bulletCtx) {
             // Clear interval if bullet hits land or edge of canvas
             if (tank.bulletXPos >= width || tank.bulletXPos <= 0 ) {
                 clearInterval(intervalBullet);
@@ -218,6 +230,7 @@ var SEarth = (function() {
 
                 if ( tankDestroyed ) {
                   this.destroyTank(tankDestroyed);
+                  this.addTank();
                 }
 
                 this.drawExplosion(tank.bulletXPos, tank.bulletYPos, tank.color);
@@ -226,20 +239,20 @@ var SEarth = (function() {
             }
 
             // Start drawing the bullets path
-            ctx.strokeStyle = tank.color;
-            ctx.beginPath();
+            bulletCtx.strokeStyle = tank.color;
+            bulletCtx.beginPath();
 
             // Move
-            ctx.moveTo(tank.bulletXPos, tank.bulletYPos);
+            bulletCtx.moveTo(tank.bulletXPos, tank.bulletYPos);
 
             // Set the new coordinates
             tank.bulletXPos += tank.bulletXSpeed / 10;
             tank.bulletYPos -= tank.bulletYSpeed / 10;
 
             // Draw line to the new coordinates
-            ctx.lineTo(tank.bulletXPos, tank.bulletYPos);
-            ctx.closePath();
-            ctx.stroke();
+            bulletCtx.lineTo(tank.bulletXPos, tank.bulletYPos);
+            bulletCtx.closePath();
+            bulletCtx.stroke();
 
             // Affect bullet with gravity
             tank.bulletYSpeed -= gravity;
@@ -269,8 +282,12 @@ var SEarth = (function() {
 
             // Erase Tank
             ctx.putImageData(tank.origBg, tank.topLeftXPos, tank.topLeftYPos);
+
+            var bulletCtx = tank.bulletCanvas.getContext('2d');
+            bulletCtx.clearRect(0, 0, width, height);
+            tank.bulletCanvas.remove();
+
             delete tanks[tank.id];
-            this.addTank();
         },
 
         drawExplosion: function(xpos, ypos, color) {
@@ -295,6 +312,7 @@ var SEarth = (function() {
               ctx.fillStyle = color;
               ctx.arc(xpos, ypos, explosionRadius*explosionCount, 0, 2*Math.PI, true);
               ctx.fill();
+              ctx.closePath();
 
               explosionCount++;
 
