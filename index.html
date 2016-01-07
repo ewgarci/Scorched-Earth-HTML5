@@ -1,4 +1,3 @@
-
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
@@ -20,6 +19,7 @@
 	<!-- CSS -->
 	<link rel="stylesheet" href="css/theme.css" media="screen,projection" type="text/css" />
 	<link rel="stylesheet" href="" media="print" type="text/css" />
+
 	<!--[if lte IE 6]>
 		<link rel="stylesheet" href="css/ie6.css" media="screen,projection" type="text/css" />
 	<![endif]-->
@@ -62,6 +62,90 @@
 		</div><!-- container. end -->
 		
 		<!-- JavaScript  -->
+    <script src="/socket.io/socket.io.js"></script>
 		<script type="text/javascript" src="scripts/scorched_earth.js"></script>
+    <script type="text/javascript">
+        var socket = io.connect('http://localhost');
+        var session = {};
+        var localId = '';
+
+        var angleChangeCb = function(angle) {
+          socket.emit('angleUpdate', {
+            id: localId,
+            angle: angle
+          });
+        };
+
+        var shotFiredCb = function(id, angle, power) {
+          socket.emit('fireUpdate', {
+            id: localId,
+            angle: angle,
+            power: power
+          });
+        };
+
+        socket.on('session', function (data) {
+          console.log(data);
+          SEarth.setAngleChangeCb(angleChangeCb);
+          SEarth.setShotFiredCb(shotFiredCb);
+          session = data.session;
+          localId = data.id;
+
+          SEarth.updateFromSession(session);
+          SEarth.selectTank(localId);
+          //socket.emit('my other event', { my: 'data' });
+
+          SEarth.drawSky();
+          SEarth.drawLand(session.land);
+          for (var t in session.tanks) {
+            SEarth.drawTank(session.tanks[t]);
+          }
+          SEarth.addControls();
+        });
+
+        socket.on('misc', function (data) {
+          console.log(data);
+        });
+
+        socket.on('sessionUpdate', function (data) {
+          console.log(data);
+          if (data.firedShots) {
+            for (var id in data.firedShots) {
+              if (id != localId) { 
+                SEarth.updateTank(id,
+                  data.firedShots[id].angle,
+                  data.firedShots[id].power);
+
+                SEarth.fireBullet(id);
+              }
+            }
+          }
+
+          if (data.angles) {
+            for (var id in data.angles) {
+              SEarth.updateTank(id, data.angles[id], null);
+            }
+          }
+        });
+
+        socket.on('addTank', function (data) {
+          console.log('addTank ');
+          console.log(data);
+          session.tanks[data.id] = data.tank;
+          SEarth.drawTank(data.tank);
+
+          SEarth.updateFromSession(session);
+        });
+
+        socket.on('removeTank', function (data) {
+          console.log('removeTank ');
+          console.log(data);
+          SEarth.removeTank(session.tanks[data.id]);
+          delete session.tanks[data.id];
+
+          SEarth.updateFromSession(session);
+        });
+    </script>
+
 	</body>
 </html>

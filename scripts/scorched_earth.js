@@ -34,7 +34,6 @@ var SEarth = (function() {
     var width = ctx.canvas.width;
     var height = ctx.canvas.height;
     var gravity = 1;
-    var fps = 1000 / 30; // 30fps
     var land = [];
     var selectedTankIdx = 0;
     var selectedTankId = '';
@@ -49,6 +48,9 @@ var SEarth = (function() {
         spriteSize: 40,
         killRadius: 8
     };
+
+    var angleChangeCb = function (){};
+    var shotFiredCb = function (){};
 
     var count = 0;
     var colors = [
@@ -89,13 +91,9 @@ var SEarth = (function() {
             }
         },
 
-        drawLand: function() {
+        createLand: function() {
             // Clear land array
             land = [];
-
-            // Bands count and colour shade
-            var bands = 10;
-            var shade = Math.round(150 / bands);
 
             // Random horizontal shift
             var hoz_shift = Math.round((Math.random() * width));
@@ -107,6 +105,20 @@ var SEarth = (function() {
                 var amplitude = (height / 10);
                 var frequency = Math.sin((i+hoz_shift)/100);
                 var ypos = Math.floor((frequency * amplitude) + shift);
+
+                // Add land slice to array
+                land.push({xpos: i, ypos: ypos});
+            }
+        },
+
+        drawLand: function(land) {
+            // Bands count and colour shade
+            var bands = 10;
+            var shade = Math.round(150 / bands);
+
+            // Loop through each pixel and draw the land
+            for (var i=0; i < land.length; i += 1) {
+                var ypos = land[i].ypos;
 
                 // Calculate band height
                 var block_height = height-ypos;
@@ -134,10 +146,6 @@ var SEarth = (function() {
                 // Fill in the remainder of the land
                 ctx.fillStyle  = 'rgb(' + col + ',' + col + ',' + col +')';
                 ctx.fillRect(i, new_ypos+band_height, 1, height-ypos);
-
-
-                // Add land slice to array
-                land.push({xpos: i, ypos: ypos});
             }
         },
 
@@ -159,14 +167,6 @@ var SEarth = (function() {
             newTank.topLeftYPos = newTank.ypos - tankDefaults.spriteSize/2;
             newTank.origBg = ctx.getImageData(newTank.topLeftXPos, newTank.topLeftYPos, tankDefaults.spriteSize, tankDefaults.spriteSize);
 
-            var bulletCanvas = document.createElement('canvas');
-            bulletCanvas.id     = newTank.id + "-bl";
-            bulletCanvas.width  = width;
-            bulletCanvas.height = height;
-            bulletCanvas.style.zIndex   = 5;
-            document.getElementById('canvas-container').appendChild(bulletCanvas);
-            newTank.bulletCanvas = bulletCanvas;
-
             tanks[newTank.id] = newTank;
             this.drawTank(newTank);
 
@@ -174,6 +174,22 @@ var SEarth = (function() {
         },
 
         drawTank: function(tank) {
+            if (!tank.origBg) {
+              tank.topLeftXPos = tank.xpos - tankDefaults.spriteSize/2;
+              tank.topLeftYPos = tank.ypos - tankDefaults.spriteSize/2;
+              tank.origBg = ctx.getImageData(tank.topLeftXPos, tank.topLeftYPos, tankDefaults.spriteSize, tankDefaults.spriteSize);
+            }
+
+            if (!tank.bulletCanvas) {
+              var bulletCanvas = document.createElement('canvas');
+              bulletCanvas.id     = tank.id + "-bl";
+              bulletCanvas.width  = width;
+              bulletCanvas.height = height;
+              bulletCanvas.style.zIndex   = 5;
+              document.getElementById('canvas-container').appendChild(bulletCanvas);
+              tank.bulletCanvas = bulletCanvas;
+            }
+
             // Erase Tank
             ctx.putImageData(tank.origBg, tank.topLeftXPos, tank.topLeftYPos);
 
@@ -215,7 +231,7 @@ var SEarth = (function() {
             // Animate the bullet path
             var intervalBullet = setInterval( function() {
               SEarth.drawBullet(tanks[id], intervalBullet, bulletCtx);
-            }, 30);
+            }, 1000/30);
 
         },
 
@@ -279,6 +295,16 @@ var SEarth = (function() {
             return false;
         },
 
+        removeTank: function(tank) {
+            // Erase Tank
+            ctx.putImageData(tank.origBg, tank.topLeftXPos, tank.topLeftYPos);
+
+            var bulletCtx = tank.bulletCanvas.getContext('2d');
+            bulletCtx.clearRect(0, 0, width, height);
+            tank.bulletCanvas.remove();
+
+        },
+
         destroyTank: function(tank) {
             this.drawExplosion(tank.xpos, tank.ypos, tank.color);
 
@@ -289,7 +315,7 @@ var SEarth = (function() {
             bulletCtx.clearRect(0, 0, width, height);
             tank.bulletCanvas.remove();
 
-            delete tanks[tank.id];
+//            delete tanks[tank.id];
         },
 
         drawExplosion: function(xpos, ypos, color) {
@@ -322,26 +348,6 @@ var SEarth = (function() {
 
         },
 
-        animate: function() {
-            var d = new Date();
-            var now = d.getTime();
-            var end = now + fps;
-            var count = 0;
-            while (now < end) {
-                count += 1;
-                d = new Date();
-                now = d.getTime();
-            }
-
-            setInterval(this.outputFPS, fps)
-        },
-
-        outputFPS: function() {
-            ctx.fillStyle = 'rgb(255, 255, 255)';
-            ctx.fillText('FPS: ' + count , count, count);
-            count += 1;
-        },
-
         addControls: function() {
             // Collect the DOM elements
             btnPowerDown = document.getElementById('power_down');
@@ -362,7 +368,7 @@ var SEarth = (function() {
             this.addEvent(btnAngleDown, 'click', function() {SEarth.alterAngle(+1)});
             this.addEvent(btnAngleUp, 'click', function() {SEarth.alterAngle(-1)});
             this.addEvent(btnFireNum, 'click', function() {
-              SEarth.fireBullet(selectedTankId);
+              SEarth.localFireBullet(selectedTankId);
             });
 
             this.addEvent(btnSwitch, 'click', function() {
@@ -387,7 +393,7 @@ var SEarth = (function() {
 
               // Space Bar
               case 32:
-                SEarth.fireBullet(selectedTankId);
+                SEarth.localFireBullet(selectedTankId);
                 break;
 
               // Left arrow
@@ -416,6 +422,11 @@ var SEarth = (function() {
             elm.addEventListener(event, func, false);
         },
 
+        localFireBullet: function(id) {
+            this.fireBullet(id)
+            shotFiredCb(id, tanks[id].angle, tanks[id].power);
+        },
+
         alterPower: function(value) {
             var tank = tanks[selectedTankId];
 
@@ -423,7 +434,6 @@ var SEarth = (function() {
             if ((tank.power + value < 0) || (tank.power + value >= 100)) {
                 return;
             }
-
 
             // Increase power and update DOM
             tank.power += value;
@@ -436,35 +446,59 @@ var SEarth = (function() {
             var tank = tanks[selectedTankId];
 
             // Prevent angle going below 0
-            if ((tank.angle + value < 0) || (tank.angle + value >= 180)) {
+            if ((tank.angle + value < 0) || (tank.angle + value > 180)) {
                 return;
             }
-
-
-            this.drawTank(tank);
 
             // Increase angle and update DOM
             tank.angle += value;
 
+            this.drawTank(tank);
+
             var btnAngleNum = document.getElementById('angle_number');
             btnAngleNum.innerHTML = tank.angle;
+
+            angleChangeCb(tank.angle);
+        },
+
+        updateTank: function(id, angle, power) {
+            if (angle && angle >= 0 && angle <= 180) {
+              tanks[id].angle = angle;
+            }
+
+            if (power && power > 0 && power <= 100) {
+              tanks[id].power = power;
+            }
+
+            this.drawTank(tanks[id]);
+        },
+
+        selectTank: function(id) {
+            selectedTankId = id;
+        },
+
+        updateFromSession: function(session) {
+            land = session.land;
+            tanks = session.tanks;
+        },
+
+        setAngleChangeCb: function(cb) {
+            angleChangeCb = cb;
+        },
+
+        setShotFiredCb: function(cb) {
+            shotFiredCb = cb;
         },
 
         init: function() {
             this.drawSky();
-            this.drawLand();
+            this.createLand();
+            this.drawLand(land);
             this.addTank();
             this.addTank();
             this.addControls();
-            //this.outputFPS(23);
-            //this.animate();
-
         }
     };
 })();
 
 
-// Render when the DOM is ready
-window.onload = function() {
-    SEarth.init();
-}

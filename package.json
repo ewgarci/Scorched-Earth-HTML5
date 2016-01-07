@@ -1,0 +1,23 @@
+{
+  "name": "scorched",
+  "version": "0.0.2",
+  "description": "Scorched Earth Clone",
+  "main": "app.js",
+  "dependencies": {
+    "express": "^4.13.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luchasei/Scorched-Earth-HTML5.git"
+  },
+  "author": "",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/luchasei/Scorched-Earth-HTML5/issues"
+  },
+  "homepage": "https://github.com/luchasei/Scorched-Earth-HTML5#readme"
+}
