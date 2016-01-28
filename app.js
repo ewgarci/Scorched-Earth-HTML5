@@ -2,15 +2,16 @@ var app = require('express')();
 var express = require('express');
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
-var scorched = require('./scripts/scorched_common.js')();
+var scorched = require('./scripts/scorched_core.js')();
 
 scorched.createLand();
-server.listen(80);
+server.listen(3000);
+
 
 var TANK_UPDATE_INTERVAL_MS = 500;
 scorched.update = {};
 scorched.update.angles = {};
-scorched.update.firedShots = {};
+scorched.update.bullets = {};
 
 app.use("/css", express.static(__dirname + "/css"));
 app.use("/scripts", express.static(__dirname + "/scripts"));
@@ -20,14 +21,14 @@ app.get('/', function (req, res) {
 });
 
 var tankUpdateInterval = setInterval( function() {
-  if (io.engine.clientsCount > 0 && (scorched.update.angles || scorched.update.firedShots)){
+  if (io.engine.clientsCount > 0 && (scorched.update.angles || scorched.update.bullets)){
     console.log({
       angles : scorched.update.angles,
-      firedShots : scorched.update.firedShots
+      bullets : scorched.update.bullets
     });
     io.emit('sessionUpdate', {
       angles : scorched.update.angles,
-      firedShots : scorched.update.firedShots
+      bullets : scorched.update.bullets
     });
 
     scorched.update = {};
@@ -60,10 +61,12 @@ io.on('connection', function (socket) {
 
   socket.on('fireUpdate', function (data) {
     console.log(data);
-    if (!scorched.update.firedShots)
-      scorched.update.firedShots = {};
+    var bulletData = scorched.prepareBullet(data);
 
-    scorched.update.firedShots[data.id] = data;
+    if (!scorched.update.bullets)
+      scorched.update.bullets = {};
+
+    scorched.update.bullets[data.id] = bulletData;
   });
 
   socket.on('disconnect', function() {
@@ -74,6 +77,10 @@ io.on('connection', function (socket) {
       id: socket.id,
       tank: t
     });
+  });
+
+  socket.on('ping', function() {
+    socket.emit('pong');
   });
 });
 
