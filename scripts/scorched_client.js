@@ -256,7 +256,7 @@ var SEarth = (function() {
 
             var explosionCount = 1;
             var explosionLength = 10;
-            var explosionRadius = (tankDefaults.turretLength * .5) / explosionLength;
+            var explosionRadius = (tankDefaults.turretLength * 0.5) / explosionLength;
 
             // Animate the explosion getting larger
             var explosionInterval = setInterval( function() {
@@ -294,10 +294,10 @@ var SEarth = (function() {
             btnAngleNum.innerHTML = tankDefaults.angle;
 
             // Add Events
-            this.addEvent(btnPowerDown, 'click', function() {SEarth.alterPower(-1)});
-            this.addEvent(btnPowerUp, 'click', function() {SEarth.alterPower(+1)});
-            this.addEvent(btnAngleDown, 'click', function() {SEarth.alterAngle(+1)});
-            this.addEvent(btnAngleUp, 'click', function() {SEarth.alterAngle(-1)});
+            this.addEvent(btnPowerDown, 'click', function() { SEarth.alterPower(-1) });
+            this.addEvent(btnPowerUp, 'click', function() { SEarth.alterPower(+1)} );
+            this.addEvent(btnAngleDown, 'click', function() { SEarth.alterAngle(+1) });
+            this.addEvent(btnAngleUp, 'click', function() { SEarth.alterAngle(-1) });
             this.addEvent(btnFireNum, 'click', function() {
               SEarth.localFireBullet(selectedTankId);
             });
@@ -426,6 +426,7 @@ var SEarth = (function() {
         },
 
         initMultiplayer: function() {
+            //TODO Change to match server ip
             var socket = io.connect('http://localhost:3000');
 
             var angleChangeCb = function(angle) {
