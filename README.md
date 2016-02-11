@@ -16,3 +16,10 @@ $ node app.js
 ```
 
 Open multiple browsers and navigate to localhost:3000 to view the game.
+
+**Todo**
+
+* Create rooms and set maximum limits for number of tanks in game
+* Look up ip addresses and show user locations above tanks
+* Fix shot fired animations on tabs that are inactive
+* Keep track of user scores

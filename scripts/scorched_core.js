@@ -46,9 +46,42 @@ module.exports = function () {
         }
     },
 
+    getNewTankPosition: function(){
+      var locations = [];
+      var tanksXPos = [];
+      var i, t, start;
+
+      // Get left most tank positions pixels and sort
+      for (t in session.tanks) {
+        var xCenter = session.tanks[t].xPos;
+        var leftBounds = xCenter - tankDefaults.spriteSize/2;
+        tanksXPos.push(leftBounds);
+      }
+
+      tanksXPos.sort(function (a, b) {
+            return a - b;
+      });
+
+      tanksXPos.push(width - tankDefaults.spriteSize/2);
+      start = tankDefaults.spriteSize/2;
+
+      // Acceptable location for tanks should not be close to other tanks
+      while (tanksXPos.length > 0) {
+        var tankLeftEdge = tanksXPos.shift();
+
+        for (i = start; i < tankLeftEdge; i++){
+          locations.push(i);
+        }
+
+        start = tankLeftEdge + tankDefaults.spriteSize;
+      }
+
+      var idx = Math.round(Math.random() * locations.length);
+      return locations[idx];
+    },
+
     addTank: function(id) {
-        // Generate random X position
-        var xPos = Math.round(Math.random() * width);
+        var xPos = this.getNewTankPosition();
 
         var newTank = {
           id: id,
